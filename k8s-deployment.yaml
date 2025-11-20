@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qe-assistant-be
+  labels:
+    app: qe-assistant-be
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: qe-assistant-be
+  template:
+    metadata:
+      labels:
+        app: qe-assistant-be
+    spec:
+      containers:
+        - name: qe-assistant-be
+          image: <ACR_NAME>.azurecr.io/qe-assistant-be:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: "production"
+          # Sử dụng Secret hoặc ConfigMap cho các biến môi trường nhạy cảm
+          envFrom:
+            - secretRef:
+                name: qe-assistant-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qe-assistant-be-service
+  labels:
+    app: qe-assistant-be
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
+      name: http
+  selector:
+    app: qe-assistant-be
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: qe-assistant-secrets
+type: Opaque
+stringData:
+  # Thay thế các giá trị này bằng giá trị thực tế
+  COSMOS_URI: "your-cosmos-uri"
+  COSMOS_DB: "corp_extension"
+  AZURE_OPENAI_ENDPOINT: "your-openai-endpoint"
+  AZURE_OPENAI_API_KEY: "your-api-key"
+  AZURE_OPENAI_DEPLOYMENT: "your-deployment"
+  AZURE_OPENAI_MODEL: "your-model"
+  AZURE_OPENAI_API_VERSION: "2024-04-01-preview"
